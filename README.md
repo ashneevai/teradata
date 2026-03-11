@@ -23,7 +23,6 @@ This project provides:
 - `scripts/run_pipeline.ps1`: orchestration with dependency check + retries.
 - `scripts/register_cron_530_ist.sh`: schedules daily run in cron at 05:30 IST.
 - `scripts/remove_cron_530_ist.sh`: removes the cron schedule.
-- `scripts/register_task_530_ist.ps1`: optional Windows Task Scheduler fallback.
 - `config/env.ps1`: environment settings.
 
 ## Control table logic
@@ -80,13 +79,6 @@ bash ./scripts/remove_cron_530_ist.sh
 ```
 
 Cron entry uses `CRON_TZ=Asia/Kolkata` so it runs at 05:30 IST.
-
-## Windows Task Scheduler fallback
-
-```powershell
-cd "c:\Users\LENOVO\Documents\Google ADK\bteq"
-powershell -ExecutionPolicy Bypass -File .\scripts\register_task_530_ist.ps1
-```
 
 ## Retry behavior
 
