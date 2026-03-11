@@ -6,7 +6,7 @@ This project provides:
 - Control-table based dependency checks.
 - Control-table based run-status updates.
 - Retry policy: 3 attempts, 30-minute interval.
-- Daily scheduling at 05:30 IST via Windows Task Scheduler.
+- Daily scheduling at 05:30 IST via cron.
 
 ## Folder layout
 
@@ -21,7 +21,9 @@ This project provides:
 - `bteq/40_gold_transform.btq`: Silver to Gold star-schema load.
 - `scripts/setup_database.ps1`: creates metadata and layer tables.
 - `scripts/run_pipeline.ps1`: orchestration with dependency check + retries.
-- `scripts/register_task_530_ist.ps1`: schedules daily run.
+- `scripts/register_cron_530_ist.sh`: schedules daily run in cron at 05:30 IST.
+- `scripts/remove_cron_530_ist.sh`: removes the cron schedule.
+- `scripts/register_task_530_ist.ps1`: optional Windows Task Scheduler fallback.
 - `config/env.ps1`: environment settings.
 
 ## Control table logic
@@ -64,14 +66,27 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup_database.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\run_pipeline.ps1
 ```
 
-## Schedule at 05:30 IST
+## Schedule at 05:30 IST (cron)
+
+```bash
+cd "c:/Users/LENOVO/Documents/Google ADK/bteq"
+bash ./scripts/register_cron_530_ist.sh
+```
+
+To remove the schedule:
+
+```bash
+bash ./scripts/remove_cron_530_ist.sh
+```
+
+Cron entry uses `CRON_TZ=Asia/Kolkata` so it runs at 05:30 IST.
+
+## Windows Task Scheduler fallback
 
 ```powershell
 cd "c:\Users\LENOVO\Documents\Google ADK\bteq"
 powershell -ExecutionPolicy Bypass -File .\scripts\register_task_530_ist.ps1
 ```
-
-Note: scheduler uses `05:30 AM` in local Windows timezone. Set OS timezone to `India Standard Time` to guarantee 05:30 IST.
 
 ## Retry behavior
 
