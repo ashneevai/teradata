@@ -1,0 +1,38 @@
+.LOGON ${TDPID}/${TD_USER},${TD_PASS};
+
+DATABASE ETL_CTRL;
+
+SELECT 1
+FROM pipeline_control
+WHERE job_name = '${JOB_NAME}'
+  AND is_enabled = 'Y';
+
+.IF ACTIVITYCOUNT = 0 THEN .QUIT 30
+
+SELECT 1
+WHERE (
+    (SELECT COUNT(*)
+     FROM pipeline_dependencies
+     WHERE child_job_name = '${JOB_NAME}'
+       AND is_mandatory = 'Y') = 0
+)
+OR (
+    (SELECT COUNT(*)
+     FROM pipeline_dependencies d
+     JOIN pipeline_run_stats r
+       ON d.parent_job_name = r.job_name
+      AND r.run_date = CURRENT_DATE
+      AND r.run_status = 'SUCCESS'
+     WHERE d.child_job_name = '${JOB_NAME}'
+       AND d.is_mandatory = 'Y')
+    =
+    (SELECT COUNT(*)
+     FROM pipeline_dependencies
+     WHERE child_job_name = '${JOB_NAME}'
+       AND is_mandatory = 'Y')
+);
+
+.IF ACTIVITYCOUNT = 0 THEN .QUIT 31
+
+.LOGOFF;
+.QUIT 0;

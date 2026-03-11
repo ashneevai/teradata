@@ -1,0 +1,50 @@
+.LOGON ${TDPID}/${TD_USER},${TD_PASS};
+
+DATABASE ETL_CTRL;
+
+MERGE INTO pipeline_run_stats tgt
+USING (
+    SELECT
+        '${RUN_ID}'  AS run_id,
+        '${JOB_NAME}' AS job_name,
+        CURRENT_DATE AS run_date,
+        '${RUN_STATUS}' AS run_status,
+        ${START_TS_EXPR} AS start_ts,
+        ${END_TS_EXPR}   AS end_ts,
+        ${ROWS_LOADED}   AS rows_loaded,
+        '${ERROR_MESSAGE}' AS error_message,
+        ${ATTEMPT_NO} AS attempt_no,
+        CURRENT_TIMESTAMP(0) AS updated_ts
+) src
+ON tgt.job_name = src.job_name
+AND tgt.run_date = src.run_date
+WHEN MATCHED THEN
+UPDATE SET
+    run_id = src.run_id,
+    run_status = src.run_status,
+    start_ts = COALESCE(tgt.start_ts, src.start_ts),
+    end_ts = src.end_ts,
+    rows_loaded = src.rows_loaded,
+    error_message = src.error_message,
+    attempt_no = src.attempt_no,
+    updated_ts = src.updated_ts
+WHEN NOT MATCHED THEN
+INSERT (
+    run_id, job_name, run_date, run_status, start_ts, end_ts,
+    rows_loaded, error_message, attempt_no, updated_ts
+)
+VALUES (
+    src.run_id, src.job_name, src.run_date, src.run_status, src.start_ts, src.end_ts,
+    src.rows_loaded, src.error_message, src.attempt_no, src.updated_ts
+);
+
+UPDATE pipeline_control
+SET last_run_status = '${RUN_STATUS}',
+    last_run_ts = CURRENT_TIMESTAMP(0),
+    last_error_message = '${ERROR_MESSAGE}',
+    last_attempt_no = ${ATTEMPT_NO},
+    updated_ts = CURRENT_TIMESTAMP(0)
+WHERE job_name = '${JOB_NAME}';
+
+.LOGOFF;
+.QUIT 0;

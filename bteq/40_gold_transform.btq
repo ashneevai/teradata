@@ -1,0 +1,81 @@
+.LOGON ${TDPID}/${TD_USER},${TD_PASS};
+
+INSERT INTO TD_GOLD.dim_run (run_id, run_date, run_dts)
+SELECT '${RUN_ID}', CURRENT_DATE, CURRENT_TIMESTAMP(0)
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM TD_GOLD.dim_run
+    WHERE run_id = '${RUN_ID}'
+      AND run_date = CURRENT_DATE
+);
+
+INSERT INTO TD_GOLD.dim_location (chas, rad)
+SELECT s.chas, s.rad
+FROM (
+    SELECT DISTINCT chas, rad
+    FROM TD_SILVER.boston_housing_silver
+    WHERE run_id = '${RUN_ID}'
+      AND dq_valid_flag = 'Y'
+) s
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM TD_GOLD.dim_location d
+    WHERE d.chas = s.chas
+      AND d.rad = s.rad
+);
+
+DELETE FROM TD_GOLD.fact_boston_housing_metrics WHERE run_id = '${RUN_ID}';
+
+INSERT INTO TD_GOLD.fact_boston_housing_metrics (
+    run_id,
+    run_key,
+    location_key,
+    record_count,
+    avg_medv,
+    min_medv,
+    max_medv,
+    avg_rm,
+    avg_lstat,
+    total_tax,
+    avg_ptratio,
+    aggregated_dts
+)
+SELECT
+    '${RUN_ID}' AS run_id,
+    dr.run_key,
+    dl.location_key,
+    agg.record_count,
+    agg.avg_medv,
+    agg.min_medv,
+    agg.max_medv,
+    agg.avg_rm,
+    agg.avg_lstat,
+    agg.total_tax,
+    agg.avg_ptratio,
+    CURRENT_TIMESTAMP(0)
+FROM (
+    SELECT
+        chas,
+        rad,
+        COUNT(*) AS record_count,
+        AVG(medv) AS avg_medv,
+        MIN(medv) AS min_medv,
+        MAX(medv) AS max_medv,
+        AVG(rm) AS avg_rm,
+        AVG(lstat) AS avg_lstat,
+        SUM(tax) AS total_tax,
+        AVG(ptratio) AS avg_ptratio
+    FROM TD_SILVER.boston_housing_silver
+    WHERE run_id = '${RUN_ID}'
+      AND dq_valid_flag = 'Y'
+    GROUP BY 1, 2
+) agg
+JOIN TD_GOLD.dim_run dr
+  ON dr.run_id = '${RUN_ID}'
+ AND dr.run_date = CURRENT_DATE
+JOIN TD_GOLD.dim_location dl
+  ON dl.chas = agg.chas
+ AND dl.rad = agg.rad;
+
+.LOGOFF;
+.QUIT 0;

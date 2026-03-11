@@ -1,0 +1,42 @@
+.LOGON ${TDPID}/${TD_USER},${TD_PASS};
+
+DELETE FROM TD_SILVER.boston_housing_silver WHERE run_id = '${RUN_ID}';
+
+INSERT INTO TD_SILVER.boston_housing_silver (
+    run_id, crim, zn, indus, chas, nox, rm, age, dis, rad, tax,
+    ptratio, black_col, lstat, medv, dq_valid_flag, dq_error_reason
+)
+SELECT
+    '${RUN_ID}',
+    CASE WHEN REGEXP_SIMILAR(TRIM(crim), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(crim) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(zn), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(zn) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(indus), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(indus) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(chas), '^[0-1]$') = 1 THEN CAST(TRIM(chas) AS BYTEINT) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(nox), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(nox) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(rm), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(rm) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(age), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(age) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(dis), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(dis) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(rad), '^-?[0-9]+$') = 1 THEN CAST(TRIM(rad) AS INTEGER) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(tax), '^-?[0-9]+$') = 1 THEN CAST(TRIM(tax) AS INTEGER) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(ptratio), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(ptratio) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(black_col), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(black_col) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(lstat), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(lstat) AS DECIMAL(18,8)) END,
+    CASE WHEN REGEXP_SIMILAR(TRIM(medv), '^-?[0-9]+(\\.[0-9]+)?$') = 1 THEN CAST(TRIM(medv) AS DECIMAL(18,8)) END,
+    CASE
+        WHEN REGEXP_SIMILAR(TRIM(crim), '^-?[0-9]+(\\.[0-9]+)?$') = 1
+         AND REGEXP_SIMILAR(TRIM(rm),   '^-?[0-9]+(\\.[0-9]+)?$') = 1
+         AND REGEXP_SIMILAR(TRIM(medv), '^-?[0-9]+(\\.[0-9]+)?$') = 1
+        THEN 'Y'
+        ELSE 'N'
+    END AS dq_valid_flag,
+    CASE
+        WHEN REGEXP_SIMILAR(TRIM(crim), '^-?[0-9]+(\\.[0-9]+)?$') <> 1 THEN 'Invalid CRIM'
+        WHEN REGEXP_SIMILAR(TRIM(rm),   '^-?[0-9]+(\\.[0-9]+)?$') <> 1 THEN 'Invalid RM'
+        WHEN REGEXP_SIMILAR(TRIM(medv), '^-?[0-9]+(\\.[0-9]+)?$') <> 1 THEN 'Invalid MEDV'
+        ELSE NULL
+    END AS dq_error_reason
+FROM TD_BRONZE.boston_housing_bronze
+WHERE run_id = '${RUN_ID}';
+
+.LOGOFF;
+.QUIT 0;

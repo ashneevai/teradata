@@ -1,0 +1,63 @@
+DEFINE JOB LOAD_BOSTON_BRONZE
+DESCRIPTION 'Load boston_housing.csv into TD_BRONZE.boston_housing_bronze'
+(
+    DEFINE SCHEMA IN_SCHEMA
+    (
+        crim       VARCHAR(30),
+        zn         VARCHAR(30),
+        indus      VARCHAR(30),
+        chas       VARCHAR(30),
+        nox        VARCHAR(30),
+        rm         VARCHAR(30),
+        age        VARCHAR(30),
+        dis        VARCHAR(30),
+        rad        VARCHAR(30),
+        tax        VARCHAR(30),
+        ptratio    VARCHAR(30),
+        black_col  VARCHAR(30),
+        lstat      VARCHAR(30),
+        medv       VARCHAR(30)
+    );
+
+    DEFINE OPERATOR FILE_READER
+    TYPE DATACONNECTOR PRODUCER
+    SCHEMA IN_SCHEMA
+    ATTRIBUTES
+    (
+        VARCHAR FileName = @CSV_FILE,
+        VARCHAR OpenMode = 'Read',
+        VARCHAR Format = 'Delimited',
+        VARCHAR TextDelimiter = ',',
+        VARCHAR SkipRows = '1'
+    );
+
+    DEFINE OPERATOR LOAD_OP
+    TYPE LOAD
+    SCHEMA *
+    ATTRIBUTES
+    (
+        VARCHAR TdpId = @TDPID,
+        VARCHAR UserName = @TD_USER,
+        VARCHAR UserPassword = @TD_PASS,
+        VARCHAR TargetTable = 'TD_BRONZE.boston_housing_bronze',
+        VARCHAR ErrorTable1 = 'TD_BRONZE.boston_housing_bronze_e1',
+        VARCHAR ErrorTable2 = 'TD_BRONZE.boston_housing_bronze_e2',
+        INTEGER MaxSessions = 4,
+        INTEGER MinSessions = 1
+    );
+
+    APPLY
+    (
+        'INSERT INTO TD_BRONZE.boston_housing_bronze (
+            run_id, crim, zn, indus, chas, nox, rm, age, dis, rad,
+            tax, ptratio, black_col, lstat, medv, source_file_name, load_dts
+         ) VALUES (
+            ''''' || @RUN_ID || ''''',
+            :crim, :zn, :indus, :chas, :nox, :rm, :age, :dis, :rad,
+            :tax, :ptratio, :black_col, :lstat, :medv,
+            ''''' || @SOURCE_FILE_NAME || ''''', CURRENT_TIMESTAMP(0)
+         )'
+    )
+    TO OPERATOR (LOAD_OP)
+    SELECT * FROM OPERATOR (FILE_READER);
+);
